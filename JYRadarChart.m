@@ -11,7 +11,7 @@
 
 #define PADDING 13
 #define LEGEND_PADDING 3
-#define ATTRIBUTE_TEXT_SIZE 10
+#define ATTRIBUTE_TEXT_SIZE 13
 #define COLOR_HUE_STEP 5
 #define MAX_NUM_OF_COLOR 17
 
@@ -53,7 +53,7 @@
     _fillArea = NO;
     _minValue = 0;
     _colorOpacity = 1.0;
-    _backgroundLineColorRadial = [UIColor darkGrayColor];
+    _backgroundLineColor = [UIColor darkGrayColor];
     _backgroundFillColor = [UIColor whiteColor];
 
     _legendView = [[JYLegendView alloc] init];
@@ -63,7 +63,7 @@
     _attributes = @[@"you", @"should", @"set", @"these", @"data", @"titles,",
                         @"this", @"is", @"just", @"a", @"placeholder"];
 
-    _scaleFont = [UIFont systemFontOfSize:ATTRIBUTE_TEXT_SIZE];
+    _scaleFont = [UIFont boldSystemFontOfSize:ATTRIBUTE_TEXT_SIZE];
 }
 
 - (void)setShowLegend:(BOOL)showLegend {
@@ -99,8 +99,7 @@
 
 - (void)setDataSeries:(NSArray *)dataSeries {
 	_dataSeries = dataSeries;
-	NSArray *arr = _dataSeries[0];
-	_numOfV = [arr count];
+	_numOfV = [_dataSeries[0] count];
 	if (self.legendView.colors.count < _dataSeries.count) {
 		for (int i = 0; i < _dataSeries.count; i++) {
 			UIColor *color = [UIColor colorWithHue:1.0 * (i * COLOR_HUE_STEP % MAX_NUM_OF_COLOR) / MAX_NUM_OF_COLOR
@@ -128,7 +127,7 @@
     
 	//draw attribute text
 	CGFloat height = [self.scaleFont lineHeight];
-	CGFloat padding = 2.0;
+	CGFloat padding = 5.0;
 	for (int i = 0; i < _numOfV; i++) {
 		NSString *attributeName = _attributes[i];
 		CGPoint pointOnEdge = CGPointMake(_centerPoint.x - _r * sin(i * radPerV), _centerPoint.y - _r * cos(i * radPerV));
@@ -173,29 +172,10 @@
                                 _centerPoint.y - _r * cos(i * radPerV));
     }
     CGContextFillPath(context);
-
-	//draw steps line
-	//static CGFloat dashedPattern[] = {3,3};
-	//TODO: make this color a variable
-	[[UIColor lightGrayColor] setStroke];
-	CGContextSaveGState(context);
-	for (int step = 1; step <= _steps; step++) {
-		for (int i = 0; i <= _numOfV; ++i) {
-			if (i == 0) {
-				CGContextMoveToPoint(context, _centerPoint.x, _centerPoint.y - _r * step / _steps);
-			}
-			else {
-				//                CGContextSetLineDash(context, 0, dashedPattern, 2);
-				CGContextAddLineToPoint(context, _centerPoint.x - _r * sin(i * radPerV) * step / _steps,
-				                        _centerPoint.y - _r * cos(i * radPerV) * step / _steps);
-			}
-		}
-		CGContextStrokePath(context);
-	}
-	CGContextRestoreGState(context);
     
 	//draw lines from center
-	[_backgroundLineColorRadial setStroke];
+	//TODO: make this color a variable
+	[[UIColor colorWithRed:253.0/255.0 green:239.0/255.0 blue:237.0/255.0 alpha:1.0] setStroke];
 	for (int i = 0; i < _numOfV; i++) {
 		CGContextMoveToPoint(context, _centerPoint.x, _centerPoint.y);
 		CGContextAddLineToPoint(context, _centerPoint.x - _r * sin(i * radPerV),
@@ -208,50 +188,68 @@
 	CGContextSetLineWidth(context, 2.0);
     
 	//draw lines
-    if (_numOfV > 0) {
-        for (int serie = 0; serie < [_dataSeries count]; serie++) {
-            if (self.fillArea) {
-                [colors[serie] setFill];
+	for (int serie = 0; serie < [_dataSeries count]; serie++) {
+		if (self.fillArea) {
+			[colors[serie] setFill];
+		}
+		else {
+			[colors[serie] setStroke];
+		}
+		for (int i = 0; i < _numOfV; ++i) {
+			CGFloat value = [_dataSeries[serie][i] floatValue];
+			if (i == 0) {
+				CGContextMoveToPoint(context, _centerPoint.x, _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r);
+			}
+			else {
+				CGContextAddLineToPoint(context, _centerPoint.x - (value - _minValue) / (_maxValue - _minValue) * _r * sin(i * radPerV),
+				                        _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r * cos(i * radPerV));
+			}
+		}
+		CGFloat value = [_dataSeries[serie][0] floatValue];
+		CGContextAddLineToPoint(context, _centerPoint.x, _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r);
+        
+		if (self.fillArea) {
+			CGContextFillPath(context);
+		}
+		else {
+			CGContextStrokePath(context);
+		}
+        
+        
+		//draw data points
+		if (_drawPoints) {
+			for (int i = 0; i < _numOfV; i++) {
+				CGFloat value = [_dataSeries[serie][i] floatValue];
+				CGFloat xVal = _centerPoint.x - (value - _minValue) / (_maxValue - _minValue) * _r * sin(i * radPerV);
+				CGFloat yVal = _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r * cos(i * radPerV);
+                
+				[colors[serie] setFill];
+				CGContextFillEllipseInRect(context, CGRectMake(xVal - 4, yVal - 4, 8, 8));
+				[self.backgroundColor setFill];
+				CGContextFillEllipseInRect(context, CGRectMake(xVal - 2, yVal - 2, 4, 4));
+			}
+		}
+	}
+    
+    //draw steps line
+    //static CGFloat dashedPattern[] = {3,3};
+    //TODO: make this color a variable
+    [[UIColor colorWithRed:239.f/255.f green:99.f/255.f blue:83.f/255.f alpha:1.0] setStroke];
+    CGContextSaveGState(context);
+    for (int step = 1; step <= _steps; step++) {
+        for (int i = 0; i <= _numOfV; ++i) {
+            if (i == 0) {
+                CGContextMoveToPoint(context, _centerPoint.x, _centerPoint.y - _r * step / _steps);
             }
             else {
-                [colors[serie] setStroke];
-            }
-            for (int i = 0; i < _numOfV; ++i) {
-                CGFloat value = [_dataSeries[serie][i] floatValue];
-                if (i == 0) {
-                    CGContextMoveToPoint(context, _centerPoint.x, _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r);
-                }
-                else {
-                    CGContextAddLineToPoint(context, _centerPoint.x - (value - _minValue) / (_maxValue - _minValue) * _r * sin(i * radPerV),
-                            _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r * cos(i * radPerV));
-                }
-            }
-            CGFloat value = [_dataSeries[serie][0] floatValue];
-            CGContextAddLineToPoint(context, _centerPoint.x, _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r);
-
-            if (self.fillArea) {
-                CGContextFillPath(context);
-            }
-            else {
-                CGContextStrokePath(context);
-            }
-
-
-            //draw data points
-            if (_drawPoints) {
-                for (int i = 0; i < _numOfV; i++) {
-                    CGFloat value = [_dataSeries[serie][i] floatValue];
-                    CGFloat xVal = _centerPoint.x - (value - _minValue) / (_maxValue - _minValue) * _r * sin(i * radPerV);
-                    CGFloat yVal = _centerPoint.y - (value - _minValue) / (_maxValue - _minValue) * _r * cos(i * radPerV);
-
-                    [colors[serie] setFill];
-                    CGContextFillEllipseInRect(context, CGRectMake(xVal - 4, yVal - 4, 8, 8));
-                    [self.backgroundColor setFill];
-                    CGContextFillEllipseInRect(context, CGRectMake(xVal - 2, yVal - 2, 4, 4));
-                }
+                //                CGContextSetLineDash(context, 0, dashedPattern, 2);
+                CGContextAddLineToPoint(context, _centerPoint.x - _r * sin(i * radPerV) * step / _steps,
+                                        _centerPoint.y - _r * cos(i * radPerV) * step / _steps);
             }
         }
+        CGContextStrokePath(context);
     }
+    CGContextRestoreGState(context);
     
 	if (self.showStepText) {
 		//draw step label text, alone y axis
