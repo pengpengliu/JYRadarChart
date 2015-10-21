@@ -53,7 +53,7 @@
     _fillArea = NO;
     _minValue = 0;
     _colorOpacity = 1.0;
-    _backgroundLineColor = [UIColor darkGrayColor];
+    _backgroundLineColorRadial = [UIColor darkGrayColor];
     _backgroundFillColor = [UIColor whiteColor];
 
     _legendView = [[JYLegendView alloc] init];
